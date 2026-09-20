@@ -95,6 +95,17 @@ def read_config() -> Config:
     return Config(base_url=base_url, username=username, password=password)
 
 
+# A dict key that is itself an identifier (uuid, Mongo id, long number) must not be printed.
+_ID_KEY = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{24}|\d{5,}"
+)
+
+
+def _safe_key(key: Any) -> str:
+    text = str(key)
+    return "<id>" if _ID_KEY.fullmatch(text) else text
+
+
 def describe(value: Any, depth: int = 0, max_keys: int = 25) -> Any:
     """Return the structure of a JSON value, with every scalar replaced by its type.
 
@@ -104,7 +115,7 @@ def describe(value: Any, depth: int = 0, max_keys: int = 25) -> Any:
         return "..."
     if isinstance(value, dict):
         keys = list(value)[:max_keys]
-        shape = {k: describe(value[k], depth + 1) for k in keys}
+        shape = {_safe_key(k): describe(value[k], depth + 1) for k in keys}
         if len(value) > max_keys:
             shape["..."] = f"+{len(value) - max_keys} more keys"
         return shape
