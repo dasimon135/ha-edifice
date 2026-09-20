@@ -15,6 +15,8 @@ First version. Tested on Paris Classe Numérique with a parent account, on Home 
 - Reauthentication when the ENT rejects the saved password; polling stops until then.
 - One re-login and one retry when a session expires, never a loop.
 - English and French translations.
+- Brand icons (`brand/icon.png`, `brand/icon@2x.png`), which HACS requires. Drawn for this
+  project; they reuse no logo from Edifice or from any ENT.
 - `scripts/edifice_login.py` and `scripts/edifice_homework.py`, which print shapes and
   counts rather than school data, and audit what the parser kept against what the server
   sent.
