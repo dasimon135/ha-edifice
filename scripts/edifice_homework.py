@@ -15,20 +15,25 @@ from __future__ import annotations
 
 import datetime
 import getpass
+import importlib.util
 import os
 import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "custom_components" / "edifice"))
+# api.py is loaded by path rather than by putting the package directory on sys.path: that
+# directory holds calendar.py, which would shadow the standard library's calendar module.
+_API_PATH = Path(__file__).resolve().parent.parent / "custom_components" / "edifice" / "api.py"
+_spec = importlib.util.spec_from_file_location("edifice_api", _API_PATH)
+_api = importlib.util.module_from_spec(_spec)
+sys.modules[_spec.name] = _api  # dataclasses resolve string annotations through here
+_spec.loader.exec_module(_api)
 
-from api import (
-    EdificeAuthError,
-    EdificeClient,
-    EdificeError,
-    EdificePlatformError,
-    EdificeUnavailable,
-)
+EdificeAuthError = _api.EdificeAuthError
+EdificeClient = _api.EdificeClient
+EdificeError = _api.EdificeError
+EdificePlatformError = _api.EdificePlatformError
+EdificeUnavailable = _api.EdificeUnavailable
 
 # The client itself has no default URL; only this demo script does.
 DEFAULT_URL = "https://ent.parisclassenumerique.fr"

@@ -39,6 +39,23 @@
     }
   },
   "entity": {
+    "calendar": {
+      "homework": {
+        "name": "Homework"
+      }
+    },
+    "event": {
+      "new_homework": {
+        "name": "New homework",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "homework_added": "Homework added"
+            }
+          }
+        }
+      }
+    },
     "sensor": {
       "homework": {
         "name": "Homework"

@@ -1,9 +1,27 @@
 # Changelog
 
-## 0.1.0 - unreleased
+## 0.2.0 - unreleased
 
-First version. Tested on Paris Classe Numérique with a parent account, on Home Assistant
-2026.7.2 and 2026.9.3.
+### Added
+
+- **Calendar** entity: the whole diary as all-day events on the day each item is due, past
+  weeks included. On while something is due today.
+- **Event** entity: `homework_added`, fired once for each entry that appears in the diary
+  and is due today or later. The list of entries already announced is kept on disk, so a
+  restart neither repeats the diary nor loses what was added while Home Assistant was down.
+  The first run only records what exists.
+
+### Changed
+
+- The coordinator now keeps the whole diary and derives the sensor's "next 14 days" from it.
+  The sensor itself is unchanged.
+- `scripts/edifice_homework.py` loads `api.py` by path: the integration now contains a
+  `calendar.py`, which would otherwise shadow the standard library's module.
+
+## 0.1.0 - internal
+
+First version, never published. Tested on Paris Classe Numérique with a parent account, on
+Home Assistant 2026.7.2 and 2026.9.3.
 
 ### Added
 

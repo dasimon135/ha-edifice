@@ -27,7 +27,12 @@ It only reads. The single request it sends that is not a plain read is the login
 
 ## What you get
 
-One sensor per account, and a device named after the class (or the name you choose):
+Three entities per account, grouped under one device named after the class (or the name
+you choose). The entity ids follow Home Assistant's language: `…_devoirs`, `…_nouveau_devoir`
+on a French installation, `…_homework`, `…_new_homework` on an English one. You can rename
+them as usual.
+
+### Sensor: what is still to do
 
 | | |
 |---|---|
@@ -35,11 +40,29 @@ One sensor per account, and a device named after the class (or the name you choo
 | `next_due` | date of the next homework, or `null` when nothing is due |
 | `homework` | the list: `date`, `subject`, `content` (plain text), `entry_id`, `diary` |
 
-The entity id follows Home Assistant's language: `sensor.<name>_devoirs` on a French
-installation, `sensor.<name>_homework` on an English one. You can rename it as usual.
-
 The `homework` list is kept out of the recorder, so the database does not grow by a few
 kilobytes at every teacher edit. The count and `next_due` are recorded normally.
+
+### Calendar: the whole diary
+
+Every homework item is an all-day event on the day it is **due**: the official mobile app
+groups the diary under "Pour *date*", so that is what the date of an entry means. The
+subject is the title and the text is the description. Any calendar card shows it, and the
+calendar keeps the **past** weeks that the sensor leaves out.
+
+The calendar is *on* while something is due today. Its `message` is today's first homework,
+or the next one when nothing is due today.
+
+### Event: a new homework was published
+
+The event entity fires `homework_added` once for every entry that was not in the diary at
+the previous refresh, and only if it is due today or later, so a teacher back-filling last
+week notifies nobody. The event carries `date`, `subject`, `content`, `entry_id` and
+`diary`, and none of them is written to the database.
+
+The first time the integration runs it only records what already exists. The list of
+entries already announced is kept on disk, so a restart neither repeats the whole diary
+nor loses what a teacher added while Home Assistant was down.
 
 ### Examples
 
@@ -66,6 +89,30 @@ automation:
                  if hw.date == tomorrow %}
             - {{ hw.subject }}: {{ hw.content }}
             {% endfor %}
+```
+
+Be told when a teacher adds homework:
+
+```yaml
+automation:
+  - alias: "New homework"
+    triggers:
+      - trigger: state
+        entity_id: event.school_emma_new_homework
+        # An outage flips the entity through "unavailable" and back, which would
+        # replay the previous event. Neither end of that is news.
+        not_from:
+          - unavailable
+        not_to:
+          - unavailable
+          - unknown
+    actions:
+      - action: notify.notify
+        data:
+          title: "New homework: {{ trigger.to_state.attributes.subject }}"
+          message: >
+            For {{ trigger.to_state.attributes.date }}:
+            {{ trigger.to_state.attributes.content }}
 ```
 
 A dashboard card:

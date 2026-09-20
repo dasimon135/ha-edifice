@@ -39,6 +39,23 @@
     }
   },
   "entity": {
+    "calendar": {
+      "homework": {
+        "name": "Devoirs"
+      }
+    },
+    "event": {
+      "new_homework": {
+        "name": "Nouveau devoir",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "homework_added": "Devoir ajouté"
+            }
+          }
+        }
+      }
+    },
     "sensor": {
       "homework": {
         "name": "Devoirs"
