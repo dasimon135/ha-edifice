@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à un ENT Édifice",
+        "description": "Utilisez le compte avec lequel vous vous connectez à l'ENT de l'école. Le mot de passe est conservé dans la configuration de Home Assistant, comme pour toute intégration qui en demande un.",
+        "data": {
+          "url": "Adresse de l'ENT",
+          "username": "Identifiant",
+          "password": "Mot de passe",
+          "name": "Nom"
+        },
+        "data_description": {
+          "url": "L'adresse que vous tapez dans votre navigateur pour accéder à l'ENT, par exemple {example_url}",
+          "username": "Votre identifiant ENT.",
+          "password": "Votre mot de passe ENT.",
+          "name": "Facultatif. Nomme l'appareil et son capteur, par exemple « École Emma ». Par défaut, le nom du cahier de la classe."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Se reconnecter",
+        "description": "{host} n'accepte plus le mot de passe enregistré pour {username}. Saisissez le mot de passe actuel.",
+        "data": {
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Saisissez l'adresse de l'ENT, en commençant par https://",
+      "invalid_auth": "L'ENT a refusé cet identifiant ou ce mot de passe.",
+      "cannot_connect": "Impossible de joindre l'ENT. Vérifiez l'adresse, ou réessayez plus tard.",
+      "unsupported_platform": "Ce n'est pas un ENT Édifice avec un cahier de textes. L'adresse est peut-être erronée, l'ENT passe peut-être par un service de connexion externe (CAS, EduConnect), il attend peut-être un changement de mot de passe ou l'acceptation des conditions d'utilisation à faire d'abord dans un navigateur, ou le module cahier de textes n'est pas activé.",
+      "no_diary": "Connexion réussie, mais ce compte ne peut lire aucun cahier de textes.",
+      "unknown": "Erreur inattendue. Consultez le journal de Home Assistant."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Mot de passe mis à jour."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "homework": {
+        "name": "Devoirs"
+      }
+    }
+  }
+}

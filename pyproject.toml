@@ -1,0 +1,26 @@
+[tool.ruff]
+# HA 2026.7 (the hacs.json target) requires Python >= 3.14; CI runs 3.14.
+target-version = "py314"
+line-length = 120
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = [
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "RUF", # ruff-specific rules
+    "SIM", # flake8-simplify
+    "UP",  # pyupgrade
+    "W",   # pycodestyle warnings
+]
+ignore = [
+    # Home Assistant's _attr_* entity class attributes are conventionally
+    # plain (mutable) class attributes, mirroring HA core's own ruff config.
+    "RUF012",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components.edifice"]

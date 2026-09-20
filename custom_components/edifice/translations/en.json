@@ -1,0 +1,48 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to an Edifice ENT",
+        "description": "Use the account you sign in with on your school's ENT. The password is stored in Home Assistant's configuration, like every other integration that needs one.",
+        "data": {
+          "url": "ENT address",
+          "username": "Username",
+          "password": "Password",
+          "name": "Name"
+        },
+        "data_description": {
+          "url": "The address you type in your browser to reach the ENT, for example {example_url}",
+          "username": "Your ENT login.",
+          "password": "Your ENT password.",
+          "name": "Optional. Names the device and its sensor, for example \"School Emma\". Defaults to the name of the class diary."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "{host} no longer accepts the saved password for {username}. Enter the current one.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Enter the address of the ENT, starting with https://",
+      "invalid_auth": "The ENT rejected this username or password.",
+      "cannot_connect": "Could not reach the ENT. Check the address and try again later.",
+      "unsupported_platform": "This does not look like an Edifice ENT with a homework diary. The address may be wrong, the ENT may sign in through an external service (CAS, EduConnect), it may be waiting for a password change or terms acceptance that must be done in a browser first, or the homework module may not be enabled.",
+      "no_diary": "Signed in, but this account can read no homework diary.",
+      "unknown": "Unexpected error. See the Home Assistant log for details."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Password updated."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "homework": {
+        "name": "Homework"
+      }
+    }
+  }
+}

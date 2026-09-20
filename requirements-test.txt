@@ -1,0 +1,6 @@
+pytest>=8
+# Pinned to the release that ships homeassistant==2026.9.3 (stable), the version the
+# author's Home Assistant runs. A test harness should never run against a Home Assistant
+# that no user has, and some releases pin a beta: check the pin on every bump with
+#   pip install --dry-run --no-deps --report - pytest-homeassistant-custom-component==X
+pytest-homeassistant-custom-component==0.13.366
