@@ -189,18 +189,103 @@ automation:
             ({{ trigger.to_state.attributes.sender }})
 ```
 
-A dashboard card:
+Dashboard cards: see [Dashboard examples](#dashboard-examples).
+
+## Dashboard examples
+
+These cards use only Home Assistant's own markdown, calendar and button cards, so there is
+nothing to install. Replace the entity ids with yours (they follow Home Assistant's language:
+`sensor.school_emma_devoirs` on a French installation) and translate the words between quotes.
+
+A markdown card redraws itself when the entities it reads change, and the sensors change at
+every refresh, so nothing has to be triggered. The test suite renders each template below
+against sample data, so an example that stops working is caught there rather than by you.
+
+### Homework by day
 
 ```yaml
 type: markdown
-title: Homework
-content: >
-  {% for hw in state_attr('sensor.school_emma_devoirs', 'homework') %}
-  **{{ hw.date }} - {{ hw.subject }}**
-
-  {{ hw.content }}
-
+content: |
+  {%- macro text(h) -%}
+  {{ h.content.split('\n') | map('regex_replace', '^\\s*-\\s*', '') | reject('eq', '') | join(' · ') }}
+  {%- endmacro -%}
+  {%- set hw = state_attr('sensor.school_emma_homework', 'homework') or [] -%}
+  {%- set today = now().date() -%}
+  {%- for d in hw | map(attribute='date') | unique | sort %}
+  {%- set day = strptime(d, '%Y-%m-%d') %}
+  {%- set delta = (day.date() - today).days %}
+  **{{ 'Today' if delta == 0 else 'Tomorrow' if delta == 1 else day.strftime('%A %d %B') }}**
+  {% for h in hw | selectattr('date', 'eq', d) %}
+  - **{{ h.subject }}**: {{ text(h) }}
   {% endfor %}
+  {% endfor %}
+  {%- if not hw %}Nothing due.{% endif %}
+```
+
+### Tomorrow at a glance
+
+One line, made for a phone.
+
+```yaml
+type: markdown
+content: |
+  {%- set hw = state_attr('sensor.school_emma_homework', 'homework') or [] -%}
+  {%- set tomorrow = (now().date() + timedelta(days=1)).isoformat() -%}
+  {%- set subjects = hw | selectattr('date', 'eq', tomorrow) | map(attribute='subject') | unique | list -%}
+  {% if subjects %}**Tomorrow**: {{ subjects | join(', ') }}{% else %}Nothing due tomorrow.{% endif %}
+```
+
+### The whole diary, past weeks included
+
+The sensor only looks ahead. The calendar keeps the past.
+
+```yaml
+type: calendar
+initial_view: listWeek
+entities:
+  - calendar.school_emma_homework
+```
+
+### Notes to acknowledge
+
+The cahier de liaison, for one child, limited to the last 30 days. The sensor's own count goes
+back further, and a note from last year that nobody acknowledged is noise, not urgency. Dates
+are written year first, so there is no doubt about which year a note is from.
+
+```yaml
+type: markdown
+content: |
+  {%- set since = (now().date() - timedelta(days=30)).isoformat() -%}
+  {%- set words = state_attr('sensor.emma_unread_school_notes', 'words') or [] -%}
+  {%- set todo = words | rejectattr('acknowledged') | selectattr('date') | selectattr('date', 'ge', since) | list -%}
+  {% if todo %}**To acknowledge** ({{ todo | count }}):
+  {% for w in todo %}
+  - {{ w.date }}: {{ w.title }}
+  {% endfor %}{% else %}Nothing to acknowledge from the last 30 days.{% endif %}
+```
+
+Only the ENT can acknowledge a note: this integration never does.
+
+### Refresh, and when the ENT was last read
+
+The [Refresh button](#refresh-button), and a line that says how old what you are looking at is.
+
+```yaml
+type: button
+entity: button.school_emma_refresh
+name: Refresh
+show_state: false
+tap_action:
+  action: perform-action
+  perform_action: button.press
+  target:
+    entity_id: button.school_emma_refresh
+```
+
+```yaml
+type: markdown
+content: |
+  Last read: {{ relative_time(states['sensor.school_emma_homework'].last_reported) }} ago
 ```
 
 ## Installation

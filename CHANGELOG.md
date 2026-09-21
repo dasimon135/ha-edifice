@@ -11,6 +11,10 @@
 - **Polling interval option** (Configure on the integration): a whole number of minutes from 5
   to 1440, 20 as before by default. Saving reloads the integration. A value outside the bounds
   written into the configuration by hand is ignored, and the default is used.
+- **Dashboard examples** in the README: homework by day, tomorrow at a glance, the calendar,
+  the notes still to acknowledge, and the refresh button. They use only Home Assistant's own
+  cards, and the test suite renders each template against sample data, since a template that
+  fails leaves an empty card and no message.
 
 ## 0.3.1 - 2026-09-21
 
