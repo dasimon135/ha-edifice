@@ -25,6 +25,7 @@ _spec.loader.exec_module(_api)
 
 EdificeAuthError = _api.EdificeAuthError
 EdificeClient = _api.EdificeClient
+EdificeError = _api.EdificeError
 EdificePlatformError = _api.EdificePlatformError
 EdificeUnavailable = _api.EdificeUnavailable
 html_to_text = _api.html_to_text
@@ -314,3 +315,226 @@ def test_client_has_no_default_url():
     """A baked-in default would quietly send someone's password to the wrong ENT."""
     with pytest.raises(TypeError):
         EdificeClient(username="u", password="p")
+
+
+# -- children, cahier de liaison and mailbox -----------------------------------------
+
+ME = "11111111-aaaa-bbbb-cccc-000000000001"
+OTHER_PARENT = "11111111-aaaa-bbbb-cccc-000000000002"
+CHILD_A = "22222222-aaaa-bbbb-cccc-00000000000a"
+CHILD_B = "22222222-aaaa-bbbb-cccc-00000000000b"
+
+USERINFO = {"userId": ME, "firstName": "Parent"}
+CHILDREN = [
+    {"structureName": "Ecole 1", "children": [{"id": CHILD_A, "firstName": "Lea", "displayName": "Lea Dupont"}]},
+    {
+        "structureName": "Ecole 2",
+        "children": [
+            {"id": CHILD_A, "firstName": "Lea"},  # the same child, enrolled twice
+            {"id": CHILD_B, "displayName": "Tom Martin"},  # no first name
+        ],
+    },
+]
+
+
+def _word(word_id, sent, acknowledged_by=(), **extra):
+    return {
+        "id": word_id,
+        "title": f"Titre {word_id}",
+        "text": "TEXT-THAT-MUST-NEVER-BE-KEPT",
+        "sending_date": sent,
+        "category": "NOTE",
+        "owner_name": "M. Durand",
+        "acknowledgments": [{"id": i, "owner": owner, "parent_name": "x"} for i, owner in enumerate(acknowledged_by)],
+        **extra,
+    }
+
+
+def routes(client_session, **payloads):
+    for route, payload in payloads.items():
+        client_session.get_responses[route] = FakeResponse(200, payload)
+
+
+def test_the_user_id_is_read_once_and_reused():
+    client, session = make_client()
+    routes(session, **{"/auth/oauth2/userinfo": USERINFO, f"/directory/user/{ME}/children": CHILDREN})
+
+    client.get_children()
+    client.get_children()
+
+    assert sum(url.endswith("/auth/oauth2/userinfo") for url in session.gets) == 1
+
+
+def test_get_children_lists_each_child_once_and_names_them():
+    client, session = make_client()
+    routes(session, **{"/auth/oauth2/userinfo": USERINFO, f"/directory/user/{ME}/children": CHILDREN})
+
+    children = client.get_children()
+
+    assert [(c.child_id, c.first_name) for c in children] == [(CHILD_A, "Lea"), (CHILD_B, "Tom Martin")]
+
+
+def test_get_children_tolerates_junk():
+    client, session = make_client()
+    routes(
+        session,
+        **{
+            "/auth/oauth2/userinfo": USERINFO,
+            f"/directory/user/{ME}/children": ["junk", {"children": None}, {"children": ["junk", {"id": 5}]}],
+        },
+    )
+
+    assert client.get_children() == []
+
+
+@pytest.mark.parametrize("payload", [{}, {"userId": ""}, {"userId": 3}, ["not", "a", "dict"]])
+def test_an_unreadable_userinfo_is_an_error_not_a_guess(payload):
+    client, session = make_client()
+    routes(session, **{"/auth/oauth2/userinfo": payload})
+
+    with pytest.raises(EdificeError):
+        client.get_children()
+
+
+def test_get_unread_words_reads_the_counter():
+    client, session = make_client()
+    routes(session, **{f"/schoolbook/count/{CHILD_A}": {"unread_words": 3}})
+
+    assert client.get_unread_words(CHILD_A) == 3
+
+
+@pytest.mark.parametrize("payload", [{}, {"unread_words": "3"}, {"unread_words": -1}, {"unread_words": True}, [3]])
+def test_get_unread_words_rejects_an_unexpected_payload(payload):
+    client, session = make_client()
+    routes(session, **{f"/schoolbook/count/{CHILD_A}": payload})
+
+    with pytest.raises(EdificeError):
+        client.get_unread_words(CHILD_A)
+
+
+def test_a_platform_without_the_module_is_reported_as_such():
+    client, _ = make_client()  # every unknown route answers 404
+
+    with pytest.raises(EdificePlatformError):
+        client.get_unread_words(CHILD_A)
+    with pytest.raises(EdificePlatformError):
+        client.get_unread_messages()
+
+
+def test_get_words_marks_only_my_own_acknowledgment():
+    client, session = make_client()
+    routes(
+        session,
+        **{
+            "/auth/oauth2/userinfo": USERINFO,
+            f"/schoolbook/list/0/{CHILD_A}": [
+                _word(1, "2026-09-17 10:00:00.000", acknowledged_by=[ME]),
+                _word(2, "2026-09-18 10:00:00.000", acknowledged_by=[OTHER_PARENT]),
+                _word(3, "2026-09-19 10:00:00.000"),
+            ],
+        },
+    )
+
+    words = client.get_words(CHILD_A)
+
+    assert {w.word_id: w.acknowledged for w in words} == {1: True, 2: False, 3: False}
+
+
+def test_get_words_sorts_newest_first_whatever_the_server_order():
+    client, session = make_client()
+    routes(
+        session,
+        **{
+            "/auth/oauth2/userinfo": USERINFO,
+            f"/schoolbook/list/0/{CHILD_A}": [
+                _word(1, "2026-09-17 10:00:00.000"),
+                _word(3, "2026-09-19 10:00:00.000"),
+                _word(2, "2026-09-18 10:00:00.000"),
+                _word(4, "not a date"),
+            ],
+        },
+    )
+
+    assert [w.word_id for w in client.get_words(CHILD_A)] == [3, 2, 1, 4]
+
+
+@pytest.mark.parametrize(
+    "sent",
+    ["2026-09-17 10:12:33.123", "2026-09-17T10:12:33.123", "2026-09-17T10:12:33", "2026-09-17T10:12:33.123Z"],
+)
+def test_the_sending_date_is_read_in_the_formats_the_server_may_use(sent):
+    client, session = make_client()
+    routes(session, **{"/auth/oauth2/userinfo": USERINFO, f"/schoolbook/list/0/{CHILD_A}": [_word(1, sent)]})
+
+    [word] = client.get_words(CHILD_A)
+
+    assert word.as_dict()["date"] == "2026-09-17"
+
+
+def test_an_aware_and_a_naive_date_can_be_sorted_together():
+    client, session = make_client()
+    routes(
+        session,
+        **{
+            "/auth/oauth2/userinfo": USERINFO,
+            f"/schoolbook/list/0/{CHILD_A}": [_word(1, "2026-09-17T10:00:00+02:00"), _word(2, "2026-09-18 10:00:00")],
+        },
+    )
+
+    assert [w.word_id for w in client.get_words(CHILD_A)] == [2, 1]
+
+
+def test_the_text_of_a_word_is_never_kept():
+    client, session = make_client()
+    routes(
+        session,
+        **{"/auth/oauth2/userinfo": USERINFO, f"/schoolbook/list/0/{CHILD_A}": [_word(1, "2026-09-17 10:00:00")]},
+    )
+
+    [word] = client.get_words(CHILD_A)
+
+    assert "TEXT-THAT-MUST-NEVER-BE-KEPT" not in repr(word) + repr(word.as_dict())
+    assert set(word.as_dict()) == {"id", "title", "date", "sender", "category", "acknowledged"}
+
+
+def test_get_words_tolerates_junk_entries():
+    client, session = make_client()
+    routes(
+        session,
+        **{
+            "/auth/oauth2/userinfo": USERINFO,
+            f"/schoolbook/list/0/{CHILD_A}": [
+                None,
+                42,
+                {"title": "no id"},
+                {"id": True},
+                _word(7, "2026-09-17 10:00:00"),
+            ],
+        },
+    )
+
+    assert [w.word_id for w in client.get_words(CHILD_A)] == [7]
+
+
+def test_get_words_rejects_a_payload_that_is_not_a_list():
+    client, session = make_client()
+    routes(session, **{"/auth/oauth2/userinfo": USERINFO, f"/schoolbook/list/0/{CHILD_A}": {"oops": 1}})
+
+    with pytest.raises(EdificeError):
+        client.get_words(CHILD_A)
+
+
+def test_get_unread_messages_reads_the_counter():
+    client, session = make_client()
+    routes(session, **{"/conversation/count/inbox?unread=true": {"count": 4}})
+
+    assert client.get_unread_messages() == 4
+
+
+@pytest.mark.parametrize("payload", [{}, {"count": "4"}, {"count": -2}, {"count": False}, 4])
+def test_get_unread_messages_rejects_an_unexpected_payload(payload):
+    client, session = make_client()
+    routes(session, **{"/conversation/count/inbox?unread=true": payload})
+
+    with pytest.raises(EdificeError):
+        client.get_unread_messages()

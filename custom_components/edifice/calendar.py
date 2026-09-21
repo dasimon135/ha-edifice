@@ -6,14 +6,13 @@ import datetime
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
 from .api import Homework
-from .const import DOMAIN
 from .coordinator import EdificeConfigEntry, EdificeCoordinator
+from .entity import account_device_info
 
 PARALLEL_UPDATES = 0
 
@@ -52,12 +51,7 @@ class EdificeHomeworkCalendar(CoordinatorEntity[EdificeCoordinator], CalendarEnt
         super().__init__(coordinator)
         entry = coordinator.config_entry
         self._attr_unique_id = f"{entry.entry_id}_calendar"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name=entry.title,
-            manufacturer="Edifice",
-            entry_type=DeviceEntryType.SERVICE,
-        )
+        self._attr_device_info = account_device_info(entry)
 
     @property
     def event(self) -> CalendarEvent | None:

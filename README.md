@@ -1,6 +1,7 @@
 # Edifice ENT for Home Assistant
 
-School homework from your child's ENT, as a Home Assistant sensor.
+School homework, notes from the teachers and unread mail from your child's ENT, in Home
+Assistant.
 
 > **Unofficial.** This project is not affiliated with, endorsed by or supported by
 > Edifice, CGI, or any school authority. It reads a web service that has no public
@@ -9,8 +10,15 @@ School homework from your child's ENT, as a Home Assistant sensor.
 ## Is this for you?
 
 Many French schools give parents access to an **ENT** (*espace numérique de travail*)
-built on Edifice, formerly Open ENT NG. This integration reads the **homework diary**
-(*cahier de textes*) of the primary-school module and shows it in Home Assistant.
+built on Edifice, formerly Open ENT NG. This integration reads three things and shows them
+in Home Assistant:
+
+- the **homework diary** (*cahier de textes*) of the primary-school module;
+- the **cahier de liaison**, the notes teachers send to parents, for each child;
+- how many **unread messages** are in the inbox.
+
+The second and the third are optional: an ENT that has only the homework diary still works,
+and gets only the homework entities.
 
 It works if all of these are true:
 
@@ -27,10 +35,11 @@ It only reads. The single request it sends that is not a plain read is the login
 
 ## What you get
 
-Three entities per account, grouped under one device named after the class (or the name
-you choose). The entity ids follow Home Assistant's language: `…_devoirs`, `…_nouveau_devoir`
-on a French installation, `…_homework`, `…_new_homework` on an English one. You can rename
-them as usual.
+Each account gets one device, named after the class (or the name you choose), that holds
+the homework entities and the mailbox counter. **Each child gets a device of their own**,
+named after their first name, that holds the cahier de liaison. Entity ids follow Home
+Assistant's language: `…_devoirs`, `…_mots_non_lus` on a French installation, `…_homework`,
+`…_unread_school_notes` on an English one. You can rename them as usual.
 
 ### Sensor: what is still to do
 
@@ -63,6 +72,32 @@ week notifies nobody. The event carries `date`, `subject`, `content`, `entry_id`
 The first time the integration runs it only records what already exists. The list of
 entries already announced is kept on disk, so a restart neither repeats the whole diary
 nor loses what a teacher added while Home Assistant was down.
+
+### Cahier de liaison, for each child
+
+On the child's device, when the ENT has the module:
+
+| | |
+|---|---|
+| **Sensor** *unread school notes* | how many words **you** have not acknowledged. Another parent's acknowledgment does not count for you. |
+| `words` | the latest ten words: `id`, `title`, `date`, `sender`, `category`, `acknowledged` |
+| **Event** *new school note* | fires `word_added` for each word that appears, with the same fields |
+
+**The text of a word is never kept.** It is part of what the ENT sends with the list, and is
+dropped at once: only the title, the date, the sender, the category and whether you
+acknowledged it reach Home Assistant, and none of them is written to the database. Open the
+ENT to read the note.
+
+As with homework, the first run records the existing words and announces none, per child, and
+what was announced is remembered across restarts.
+
+The integration never acknowledges a word for you: that would be a write, and it only reads.
+
+### Unread messages
+
+On the account's device, when the ENT uses the classic `conversation` mailbox: the number of
+unread messages in the inbox. Only the number is read, never a message. An ENT whose mail
+runs on Carbonio is not supported, and simply gets no such sensor.
 
 ### Examples
 
@@ -115,6 +150,28 @@ automation:
             {{ trigger.to_state.attributes.content }}
 ```
 
+Be told when a teacher writes a note:
+
+```yaml
+automation:
+  - alias: "New school note"
+    triggers:
+      - trigger: state
+        entity_id: event.emma_new_school_note
+        not_from:
+          - unavailable
+        not_to:
+          - unavailable
+          - unknown
+    actions:
+      - action: notify.notify
+        data:
+          title: "New note for Emma"
+          message: >
+            {{ trigger.to_state.attributes.title }}
+            ({{ trigger.to_state.attributes.sender }})
+```
+
 A dashboard card:
 
 ```yaml
@@ -164,7 +221,13 @@ refresh.
 
 ## How it behaves
 
-- It refreshes every **20 minutes**, with two requests per diary, reusing one session.
+- It refreshes every **20 minutes**, reusing one session: two requests for the diary, two per
+  child for the cahier de liaison, one for the mailbox. The list of children is asked for
+  only every six hours. A module the ENT does not have answers 404 once and is not asked
+  for again until the next reload.
+- A module that is missing or answers something unreadable costs only its own entities,
+  never the homework. A network failure, on the other hand, fails the whole refresh.
+- A child enrolled after the integration was set up gets their entities after a reload.
 - When the session has expired it signs in again **once**, retries **once**, and reports an
   error if that also fails. It never loops.
 - If the ENT is unreachable the sensor becomes *unavailable* and is retried at the next
@@ -178,11 +241,13 @@ refresh.
 
 | Platform | Status |
 |---|---|
-| Paris Classe Numérique (`ent.parisclassenumerique.fr`) | **Works.** Tested by the author, parent account. |
+| Paris Classe Numérique (`ent.parisclassenumerique.fr`) | **Works**: homework, cahier de liaison and the classic mailbox. Tested by the author, parent account. |
 | `ent77.seine-et-marne.fr`, `enthdf.fr`, `mon.lyceeconnecte.fr` | Answer as Edifice platforms. Login and homework **not tested**. |
 | monLycée.net | **Not supported.** It signs in through a Keycloak / OpenID Connect page, not the Edifice form. |
 | Secondary-school diary (`diary` module, *cahier de textes 2D*) | Not supported. Not deployed on Paris Classe Numérique, so not tested. |
-| Cahier de liaison (`schoolbook` module) | Not supported yet. |
+| Cahier de liaison (`schoolbook` module) | Supported, per child. Read-only: acknowledging a word is not done. |
+| Mailbox on Carbonio (Zimbra) instead of the classic `conversation` module | Not supported. The mailbox counter is simply absent. |
+| School agenda, news, blog, forms | Not supported. |
 | Two-factor authentication | Untested, and most likely unsupported. |
 
 Tried another ENT? Please [open an issue](../../issues) with its address and what
@@ -197,6 +262,9 @@ happened, so this table can be corrected. Leave out any personal data.
 - The homework list is readable by anything that can read entity states: dashboards,
   other integrations, voice assistants if you expose the sensor, notifications. It is a
   child's school data; expose it accordingly.
+- Your children's **first names** become the names of their devices, and the cahier de
+  liaison exposes the **title, date and sender** of each note (never its text). Keep that
+  in mind before exposing those entities outside your home.
 - An ENT's terms of use generally make credentials personal and non-transferable. Use this
   with your own account on your own installation. **Do not run it as a hosted service for
   other people, and do not give your ENT login to any third-party service.**

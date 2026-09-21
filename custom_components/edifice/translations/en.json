@@ -54,11 +54,27 @@
             }
           }
         }
+      },
+      "new_word": {
+        "name": "New school note",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "word_added": "Note added"
+            }
+          }
+        }
       }
     },
     "sensor": {
       "homework": {
         "name": "Homework"
+      },
+      "unread_words": {
+        "name": "Unread school notes"
+      },
+      "unread_messages": {
+        "name": "Unread messages"
       }
     }
   }

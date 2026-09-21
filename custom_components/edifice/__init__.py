@@ -8,7 +8,7 @@ from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 
 from .api import EdificeClient
-from .coordinator import EdificeConfigEntry, EdificeCoordinator, seen_store
+from .coordinator import EdificeConfigEntry, EdificeCoordinator, seen_store, words_store
 
 PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.EVENT, Platform.SENSOR]
 
@@ -50,5 +50,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> 
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> None:
-    """Forget which entries were announced, so a later re-add starts from a clean baseline."""
+    """Forget what was announced, so a later re-add starts from a clean baseline."""
     await seen_store(hass, entry.entry_id).async_remove()
+    await words_store(hass, entry.entry_id).async_remove()
