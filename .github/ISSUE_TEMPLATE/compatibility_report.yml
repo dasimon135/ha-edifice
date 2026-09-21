@@ -1,0 +1,69 @@
+name: ENT compatibility report
+description: Tell me how it went on an ENT other than Paris Classe Numerique
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Only Paris Classe Numerique was tested. A report on any other ENT, including one where it
+        does not work, is what makes the [compatibility table](https://github.com/dasimon135/ha-edifice#compatibility) correct.
+
+        **This is a school account and issues are public.** Never paste your username or password,
+        your children's names, the content of a homework item or of a note, or a session cookie.
+        Leave out any link that contains an identifier.
+
+        The scripts in `scripts/` print keys, types, lengths and counts, never a value from your
+        account, so their output is safe to paste. See
+        [scripts/README.md](https://github.com/dasimon135/ha-edifice/blob/main/scripts/README.md). Never paste output made with `--show`.
+  - type: input
+    id: ent-address
+    attributes:
+      label: ENT address
+      description: The public address only, as you type it in a browser.
+      placeholder: "https://ent.example.org"
+    validations:
+      required: true
+  - type: dropdown
+    id: sign-in
+    attributes:
+      label: How do you sign in to the ENT?
+      options:
+        - A username and a password typed on the ENT's own page
+        - With EduConnect
+        - Through another service (CAS, OpenID Connect, ...)
+        - I am not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: How did it go?
+      options:
+        - Everything I tried works
+        - Setup works, but some parts do not
+        - Setup fails
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: What worked and what did not
+      description: |
+        Which of the homework, the cahier de liaison and the unread messages you can see in the ENT,
+        which of them the integration shows, and the exact message if setup failed.
+    validations:
+      required: true
+  - type: textarea
+    id: shapes
+    attributes:
+      label: Output of the scripts
+      description: Optional. What `scripts/edifice_login.py` and `scripts/edifice_discover.py` print, if you ran them.
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: versions
+    attributes:
+      label: Home Assistant and integration versions
+      placeholder: "HA 2026.9.3, integration 0.3.1"
+    validations:
+      required: false

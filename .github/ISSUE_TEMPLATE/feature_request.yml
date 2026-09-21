@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest a capability this integration does not have yet
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Worth knowing before you write: the integration reads a web service that has no public
+        documentation, so a request needs something the ENT already shows to a parent account.
+        It only reads today. A request that would make it write something (acknowledge a word,
+        send a message) is a bigger decision: say why you need it.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the goal, not only the feature. The best solution is often not the one first imagined.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would it look like?
+      description: Entity, event, attribute, option - whatever form you have in mind.
+    validations:
+      required: false
+  - type: textarea
+    id: ent
+    attributes:
+      label: Can you test it?
+      description: |
+        Say which ENT you use and which of its modules you can see (homework, cahier de liaison,
+        mailbox, agenda). A module can only be supported once it can be seen on a real account.
+    validations:
+      required: false

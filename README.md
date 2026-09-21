@@ -328,6 +328,33 @@ The Home Assistant test harness does not run natively on Windows (`fcntl`), henc
 `scripts/edifice_login.py` and `scripts/edifice_homework.py` exercise a real ENT from the
 command line and print **shapes and counts, never homework text** unless you pass `--show`.
 
+## Support
+
+Open an issue here for anything about this integration: a bug, a question, a feature request,
+or a report on an ENT that is not in the [compatibility table](#compatibility). Nothing raised
+elsewhere, a forum for instance, is tracked, and it can be lost. An issue cannot.
+
+Issues are public and this is a school account: leave out your username and password, your
+children's names, and the content of any homework item or note.
+
+Before you open one, read [Compatibility](#compatibility) and [Troubleshooting](#troubleshooting).
+To get a useful answer on the first exchange, include:
+
+- your Home Assistant version and the version of this integration;
+- the address of your ENT, as you type it in a browser, with no link that contains an
+  identifier;
+- the debug log (see [Troubleshooting](#troubleshooting)), read before you post it;
+- what you did, what you expected, and what happened instead.
+
+### Staying informed
+
+New versions are announced here and nowhere else. To hear about one:
+
+- **HACS already offers you the update**, release notes included: nothing to do;
+- subscribe to `https://github.com/dasimon135/ha-edifice/releases.atom` in any RSS reader, or
+  inside Home Assistant through the `feedreader` integration;
+- or use **Watch → Custom → Releases** on this repository.
+
 ## License
 
 [MIT](LICENSE)

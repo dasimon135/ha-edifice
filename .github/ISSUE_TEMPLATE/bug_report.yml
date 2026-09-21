@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a problem with the Edifice ENT integration
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Please fill in as much of the form as
+        possible - it is what makes an issue diagnosable without a round trip.
+
+        **This is a school account and issues are public.** Never paste your username or password,
+        your children's names, the content of a homework item or of a note, or a session cookie.
+        Leave out any link that contains an identifier.
+
+        Before you continue, check [Compatibility](https://github.com/dasimon135/ha-edifice#compatibility) and
+        [Troubleshooting](https://github.com/dasimon135/ha-edifice#troubleshooting).
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem, what you expected instead, and how to reproduce it.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: What is affected?
+      options:
+        - Setup or sign-in
+        - Homework (sensor, calendar or new-homework event)
+        - Cahier de liaison (a child's notes)
+        - Unread messages
+        - Something else
+    validations:
+      required: true
+  - type: input
+    id: ent-address
+    attributes:
+      label: ENT address
+      description: The public address only, as you type it in a browser. No link that contains an identifier.
+      placeholder: "https://ent.parisclassenumerique.fr"
+    validations:
+      required: true
+  - type: input
+    id: ha-version
+    attributes:
+      label: Home Assistant version
+      description: Settings -> About (e.g. 2026.9.3)
+      placeholder: "2026.9.3"
+    validations:
+      required: true
+  - type: input
+    id: integration-version
+    attributes:
+      label: Edifice ENT version
+      description: HACS -> Edifice ENT (e.g. 0.3.1)
+      placeholder: "0.3.1"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: |
+        Turn on the debug log first (see [Troubleshooting](https://github.com/dasimon135/ha-edifice#troubleshooting)), then paste
+        what Settings -> System -> Logs shows for "edifice". The logs contain no password and no
+        homework text, but read them before posting.
+      render: text
+    validations:
+      required: false

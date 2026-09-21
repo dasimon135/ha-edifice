@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Compatibility - is my ENT supported?
+    url: https://github.com/dasimon135/ha-edifice#compatibility
+    about: The table says which platforms were tested, which are untested and which cannot work (monLycée.net, signing in with EduConnect).
+  - name: Troubleshooting
+    url: https://github.com/dasimon135/ha-edifice#troubleshooting
+    about: What the setup error messages mean, and how to turn on the debug log.
