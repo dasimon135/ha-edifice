@@ -8,9 +8,9 @@ from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
 
 from .api import EdificeClient
-from .coordinator import EdificeConfigEntry, EdificeCoordinator
+from .coordinator import EdificeConfigEntry, EdificeCoordinator, seen_store
 
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.EVENT, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> bool:
@@ -26,9 +26,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> b
     )
 
     coordinator = EdificeCoordinator(hass, entry, client)
-    # Raises ConfigEntryAuthFailed / ConfigEntryNotReady, which HA turns into a
-    # reauthentication flow / a retry with backoff.
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        # Raises ConfigEntryAuthFailed / ConfigEntryNotReady, which HA turns into a
+        # reauthentication flow / a retry with backoff.
+        await coordinator.async_config_entry_first_refresh()
+    except BaseException:
+        # Home Assistant only calls async_unload_entry for an entry that is loaded, so for
+        # one whose setup fails nothing else would ever close this session.
+        await hass.async_add_executor_job(client.close)
+        raise
 
     entry.runtime_data = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -41,3 +47,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> 
     if unloaded:
         await hass.async_add_executor_job(entry.runtime_data.client.close)
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> None:
+    """Forget which entries were announced, so a later re-add starts from a clean baseline."""
+    await seen_store(hass, entry.entry_id).async_remove()

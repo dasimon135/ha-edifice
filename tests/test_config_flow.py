@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from homeassistant.config_entries import SOURCE_USER
@@ -44,7 +44,17 @@ def client_cls():
 
 @pytest.fixture
 def mock_setup_entry():
-    with patch("custom_components.edifice.async_setup_entry", return_value=True) as mock:
+    """Stand in for the setup, leaving the runtime data that the real unload expects.
+
+    An entry whose setup is mocked is still loaded, and Home Assistant unloads it at the end
+    of the test: with no runtime data on it, that unload would fail and log noise.
+    """
+
+    async def fake_setup(hass, entry):
+        entry.runtime_data = MagicMock()
+        return True
+
+    with patch("custom_components.edifice.async_setup_entry", side_effect=fake_setup) as mock:
         yield mock
 
 

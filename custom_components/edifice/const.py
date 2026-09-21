@@ -14,3 +14,10 @@ UPCOMING_DAYS = 14
 
 ATTR_HOMEWORK = "homework"
 ATTR_NEXT_DUE = "next_due"
+
+# Fired by the "new homework" event entity when an entry appears that was not there
+# on the previous refresh.
+EVENT_HOMEWORK_ADDED = "homework_added"
+
+# Version of the file that remembers which entries have already been announced.
+STORAGE_VERSION = 1
