@@ -306,7 +306,9 @@ def test_reading_the_credentials_prints_nothing(monkeypatch, tmp_path, capsys):
 
 def test_the_default_location_is_in_the_users_config_folder_not_in_a_project():
     """The README tells people to create the file there, so it must not drift."""
-    assert discover.et.CREDENTIALS_FILE == Path.home() / ".config" / "ha-edifice" / "credentials.env"
+    expected = Path.home() / ".config" / "ha-edifice" / "credentials.env"
+
+    assert expected == discover.et.CREDENTIALS_FILE
 
 
 # -- printed routes ------------------------------------------------------------------
