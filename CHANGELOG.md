@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1 - 2026-09-21
+
+### Fixed
+
+- **The automation examples in the README missed what is caught up at startup.** They ignored
+  every event arriving from `unavailable` (`not_from`), but an event caught up when the entity is
+  set up, after a restart or a reload, arrives exactly like that: what a teacher added while Home
+  Assistant was down was recorded and announced by the integration, and never reached the phone.
+  The examples now keep any event less than five minutes old instead, which still ignores the old
+  event an entity brings back after an outage. If you copied the earlier examples, remove
+  `not_from` and add the condition. The integration itself is unchanged.
+
 ## 0.3.0 - 2026-09-21
 
 First public release. Tested on Paris Classe Numérique with a parent account, on Home

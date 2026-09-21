@@ -134,13 +134,17 @@ automation:
     triggers:
       - trigger: state
         entity_id: event.school_emma_new_homework
-        # An outage flips the entity through "unavailable" and back, which would
-        # replay the previous event. Neither end of that is news.
-        not_from:
-          - unavailable
+        # Do not add `not_from: unavailable`: what was added while Home Assistant was
+        # down is announced when the entity is set up, and that event arrives from
+        # "unavailable".
         not_to:
           - unavailable
           - unknown
+    conditions:
+      # After an outage the entity comes back from "unavailable" with its previous
+      # timestamp, which would replay an old event. Only a recent one is news.
+      - condition: template
+        value_template: "{{ (now() - trigger.to_state.state | as_datetime).total_seconds() < 300 }}"
     actions:
       - action: notify.notify
         data:
@@ -158,11 +162,12 @@ automation:
     triggers:
       - trigger: state
         entity_id: event.emma_new_school_note
-        not_from:
-          - unavailable
         not_to:
           - unavailable
           - unknown
+    conditions:
+      - condition: template
+        value_template: "{{ (now() - trigger.to_state.state | as_datetime).total_seconds() < 300 }}"
     actions:
       - action: notify.notify
         data:

@@ -393,8 +393,13 @@ DOCUMENTED_AUTOMATION = {
         {
             "trigger": "state",
             "entity_id": EMMA_EVENT,
-            "not_from": ["unavailable"],
             "not_to": ["unavailable", "unknown"],
+        }
+    ],
+    "conditions": [
+        {
+            "condition": "template",
+            "value_template": "{{ (now() - trigger.to_state.state | as_datetime).total_seconds() < 300 }}",
         }
     ],
     "actions": [
@@ -428,6 +433,44 @@ async def test_the_documented_automation_fires_for_a_new_word_and_not_for_a_reco
     assert [call.data for call in calls] == [{"title": "Sortie", "sender": "Mme Petit"}]
 
 
+async def test_the_documented_automation_does_not_refire_an_old_word_after_a_recovery(
+    hass, entry, book, client_cls, freezer
+):
+    calls = async_mock_service(hass, "test", "notify")
+    assert await async_setup_component(hass, "automation", {"automation": DOCUMENTED_AUTOMATION})
+    assert await setup_entry(hass, entry)
+    book["words"][EMMA.child_id].insert(0, make_word(3, "2026-09-19", title="Sortie", sender="Mme Petit"))
+    await refresh(hass, entry)
+    assert len(calls) == 1
+
+    client = client_cls.return_value
+    client.get_unread_messages.side_effect = EdificeUnavailable("down")
+    freezer.tick(datetime.timedelta(minutes=20))  # an outage lasts at least one refresh
+    await refresh(hass, entry)
+    assert hass.states.get(EMMA_EVENT).state == "unavailable"
+    client.get_unread_messages.side_effect = None
+    freezer.tick(datetime.timedelta(minutes=20))
+    await refresh(hass, entry)
+    assert hass.states.get(EMMA_EVENT).state != "unavailable"
+    assert len(calls) == 1
+
+
+async def test_the_documented_automation_fires_for_a_word_caught_up_at_startup(hass, entry, book, client_cls):
+    """The catch-up event is written as the entity comes back from unavailable: it is news."""
+    calls = async_mock_service(hass, "test", "notify")
+    assert await async_setup_component(hass, "automation", {"automation": DOCUMENTED_AUTOMATION})
+    assert await setup_entry(hass, entry)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(EMMA_EVENT).state == "unavailable"
+
+    book["words"][EMMA.child_id].insert(0, make_word(3, "2026-09-19", title="Sortie", sender="Mme Petit"))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert [call.data for call in calls] == [{"title": "Sortie", "sender": "Mme Petit"}]
+
+
 def test_the_readme_example_matches_the_one_under_test():
     readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
     block = re.search(r"```yaml\n(automation:\n  - alias: \"New school note\".*?)```", readme, re.DOTALL)
@@ -436,3 +479,4 @@ def test_the_readme_example_matches_the_one_under_test():
     documented = yaml.safe_load(block.group(1))["automation"][0]
 
     assert documented["triggers"] == DOCUMENTED_AUTOMATION["triggers"]
+    assert documented["conditions"] == DOCUMENTED_AUTOMATION["conditions"]

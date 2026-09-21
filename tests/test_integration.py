@@ -30,6 +30,7 @@ from custom_components.edifice.const import (
     DOMAIN,
     EVENT_HOMEWORK_ADDED,
     UPCOMING_DAYS,
+    UPDATE_INTERVAL,
 )
 from custom_components.edifice.event import EdificeNewHomeworkEvent
 from custom_components.edifice.sensor import EdificeHomeworkSensor
@@ -397,8 +398,13 @@ DOCUMENTED_AUTOMATION = {
         {
             "trigger": "state",
             "entity_id": EVENT_ID,
-            "not_from": ["unavailable"],
             "not_to": ["unavailable", "unknown"],
+        }
+    ],
+    "conditions": [
+        {
+            "condition": "template",
+            "value_template": "{{ (now() - trigger.to_state.state | as_datetime).total_seconds() < 300 }}",
         }
     ],
     "actions": [
@@ -432,7 +438,9 @@ async def test_the_documented_automation_fires_for_news_and_not_for_recoveries(h
     assert [call.data for call in calls] == [{"subject": "Science", "date": "2026-09-23"}]
 
 
-async def test_the_documented_automation_does_not_refire_an_old_event_after_a_recovery(hass, entry, client_cls):
+async def test_the_documented_automation_does_not_refire_an_old_event_after_a_recovery(
+    hass, entry, client_cls, freezer
+):
     """Once an event exists, recovery brings its old timestamp back: that must not fire again."""
     calls = async_mock_service(hass, "test", "notify")
     assert await async_setup_component(hass, "automation", {"automation": DOCUMENTED_AUTOMATION})
@@ -443,10 +451,32 @@ async def test_the_documented_automation_does_not_refire_an_old_event_after_a_re
     assert len(calls) == 1
 
     client_cls.return_value.get_diaries.side_effect = EdificeUnavailable("down")
+    freezer.tick(UPDATE_INTERVAL)  # an outage lasts at least one refresh
     await refresh(hass, entry)
+    assert hass.states.get(EVENT_ID).state == "unavailable"
     client_cls.return_value.get_diaries.side_effect = None
+    freezer.tick(UPDATE_INTERVAL)
     await refresh(hass, entry)
+    assert hass.states.get(EVENT_ID).state != "unavailable"
     assert len(calls) == 1
+
+
+async def test_the_documented_automation_fires_for_what_was_caught_up_at_startup(hass, entry, client_cls):
+    """The catch-up event is written as the entity comes back from unavailable: it is news."""
+    calls = async_mock_service(hass, "test", "notify")
+    assert await async_setup_component(hass, "automation", {"automation": DOCUMENTED_AUTOMATION})
+    assert await setup_entry(hass, entry)
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(EVENT_ID).state == "unavailable"
+
+    client_cls.return_value.get_homework.return_value = _with(
+        make_homework("2026-09-23", "Science", "pendant la coupure")
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert [call.data for call in calls] == [{"subject": "Science", "date": "2026-09-23"}]
 
 
 def test_the_readme_example_is_the_automation_under_test():
@@ -458,6 +488,7 @@ def test_the_readme_example_is_the_automation_under_test():
     documented = yaml.safe_load(block.group(1))["automation"][0]
 
     assert documented["triggers"] == DOCUMENTED_AUTOMATION["triggers"]
+    assert documented["conditions"] == DOCUMENTED_AUTOMATION["conditions"]
 
 
 # -- the session of an entry whose setup fails ---------------------------------------
