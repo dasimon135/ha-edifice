@@ -526,3 +526,16 @@ def test_the_readme_example_is_the_automation_under_test():
     documented = yaml.safe_load(block.group(1))["automation"][0]
 
     assert documented["triggers"] == DOCUMENTED_AUTOMATION["triggers"]
+
+
+# -- the session of an entry whose setup fails ---------------------------------------
+
+
+@pytest.mark.parametrize("error", [EdificeAuthError("rejected"), EdificeUnavailable("down")])
+async def test_the_session_is_closed_when_the_first_refresh_fails(hass, entry, client_cls, error):
+    """Nothing will unload an entry that never set up, so setup must close its own session."""
+    client_cls.return_value.get_diaries.side_effect = error
+
+    assert not await _setup(hass, entry)
+
+    client_cls.return_value.close.assert_called_once()
