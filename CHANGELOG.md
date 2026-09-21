@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+### Added
+
+- **Cahier de liaison, per child.** Each child gets a device named after their first name,
+  with a sensor counting the words the account has not acknowledged, listing the latest ten
+  (title, date, sender, category, acknowledged), and a `word_added` event. The text of a
+  word is never kept. Announcements are remembered per child across restarts, and a child met
+  for the first time is a baseline, not news.
+- **Unread messages** sensor for ENTs that use the classic `conversation` mailbox. Only the
+  count is read.
+
+### Changed
+
+- A module the ENT does not have costs only its own entities, never the homework, and is not
+  asked for again after its first 404. A network failure still fails the whole refresh.
+- The list of children is asked for every six hours instead of at every refresh.
+- The device descriptions moved to `entity.py`. The children's devices are not linked to the
+  account's with `via_device`: Home Assistant replaced it by `via_device_id` between 2026.7 and
+  2026.9, and the link would only be cosmetic.
+
 ## 0.2.0 - unreleased
 
 ### Added

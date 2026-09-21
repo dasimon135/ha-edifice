@@ -54,11 +54,27 @@
             }
           }
         }
+      },
+      "new_word": {
+        "name": "Nouveau mot",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "word_added": "Mot ajouté"
+            }
+          }
+        }
       }
     },
     "sensor": {
       "homework": {
         "name": "Devoirs"
+      },
+      "unread_words": {
+        "name": "Mots non lus"
+      },
+      "unread_messages": {
+        "name": "Messages non lus"
       }
     }
   }

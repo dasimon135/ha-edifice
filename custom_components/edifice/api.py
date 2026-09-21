@@ -1,10 +1,11 @@
-"""Minimal client for the homework module of an Edifice-based ENT.
+"""Minimal client for an Edifice-based ENT: homework, cahier de liaison and unread mail.
 
-The server side of this module (``fr.wseduc.homeworks``) is not open source, so every
+The server side of the homework module (``fr.wseduc.homeworks``) is not open source, so every
 route and field name here was established by observing the official mobile client and a
-live platform. Parsing is therefore deliberately tolerant: unknown fields are ignored and
-malformed records are skipped rather than raising, because the payload can gain a field
-at any time without warning.
+live platform. The cahier de liaison (``/schoolbook``) and the mailbox count
+(``/conversation/count``) were confirmed on the same account. Parsing is therefore
+deliberately tolerant: unknown fields are ignored and malformed records are skipped rather
+than raising, because the payload can gain a field at any time without warning.
 
 Two rules that the ENT imposes and that this client must never break:
 
@@ -84,6 +85,43 @@ class Homework:
         }
 
 
+@dataclass(frozen=True)
+class Child:
+    """A child on the account. The cahier de liaison is kept per child."""
+
+    child_id: str
+    first_name: str
+
+
+@dataclass(frozen=True)
+class Word:
+    """One mot of the cahier de liaison.
+
+    The text is deliberately not kept: teachers' notes are personal, and the README promises
+    that only the title, the date, the sender and whether it was acknowledged reach Home
+    Assistant.
+    """
+
+    word_id: int
+    title: str
+    sent: datetime.datetime | None
+    category: str
+    sender: str
+    # Whether *this* account has acknowledged it. Another parent's acknowledgment is not ours.
+    acknowledged: bool
+
+    def as_dict(self) -> dict[str, Any]:
+        """Serialise for a Home Assistant state attribute."""
+        return {
+            "id": self.word_id,
+            "title": self.title,
+            "date": self.sent.date().isoformat() if self.sent else None,
+            "sender": self.sender,
+            "category": self.category,
+            "acknowledged": self.acknowledged,
+        }
+
+
 class _TextExtractor(HTMLParser):
     """Turn the stored rich text into something a notification can read aloud."""
 
@@ -135,6 +173,25 @@ def _unwrap_date(value: Any) -> datetime.datetime | None:
         return None
 
 
+def _parse_sent(value: Any) -> datetime.datetime | None:
+    """Read a word's ``sending_date``, whose exact format is not documented."""
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.datetime.fromisoformat(value.strip().replace(" ", "T", 1))
+    except ValueError:
+        return None
+
+
+def _clean(value: Any) -> str:
+    return value.strip() if isinstance(value, str) else ""
+
+
+def _valid_count(value: Any) -> bool:
+    # bool is an int in Python, and a count that is True is not a count.
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
 def _parse_day(value: Any) -> datetime.date | None:
     """Read the plain ``YYYY-MM-DD`` used by day buckets -- not ``$date`` wrapped."""
     if not isinstance(value, str):
@@ -159,6 +216,7 @@ class EdificeClient:
     password: str
     _session: requests.Session = field(default_factory=requests.Session, repr=False)
     _logged_in: bool = field(default=False, repr=False)
+    _user_id: str | None = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         self.base_url = self.base_url.rstrip("/")
@@ -292,6 +350,89 @@ class EdificeClient:
             items.extend(self._homework_for(diary, since, until))
         items.sort(key=lambda hw: (hw.date, hw.subject.lower()))
         return items
+
+    # -- children, cahier de liaison and mailbox -----------------------------------
+
+    def _current_user_id(self) -> str:
+        """Id of the signed-in user, read once from the userinfo route."""
+        if self._user_id is None:
+            payload = self._get_json("/auth/oauth2/userinfo")
+            user_id = payload.get("userId") if isinstance(payload, dict) else None
+            if not isinstance(user_id, str) or not user_id:
+                raise EdificeError("/auth/oauth2/userinfo did not say who is signed in")
+            self._user_id = user_id
+        return self._user_id
+
+    def get_children(self) -> list[Child]:
+        """The children of this account, once each even when enrolled in several structures."""
+        payload = self._get_json(f"/directory/user/{self._current_user_id()}/children")
+        if not isinstance(payload, list):
+            raise EdificeError("the children route did not return a list")
+
+        children: dict[str, Child] = {}
+        for structure in payload:
+            if not isinstance(structure, dict):
+                continue
+            for raw in structure.get("children") or []:
+                child_id = raw.get("id") if isinstance(raw, dict) else None
+                if not isinstance(child_id, str) or child_id in children:
+                    continue
+                name = _clean(raw.get("firstName")) or _clean(raw.get("displayName")) or "Child"
+                children[child_id] = Child(child_id=child_id, first_name=name)
+        return list(children.values())
+
+    def get_unread_words(self, child_id: str) -> int:
+        """How many words of the cahier de liaison this account has not acknowledged."""
+        payload = self._get_json(f"/schoolbook/count/{child_id}")
+        count = payload.get("unread_words") if isinstance(payload, dict) else None
+        if not _valid_count(count):
+            raise EdificeError("the schoolbook count route returned an unexpected payload")
+        return count
+
+    def get_words(self, child_id: str, page: int = 0) -> list[Word]:
+        """One page (ten words) of the cahier de liaison, newest first."""
+        payload = self._get_json(f"/schoolbook/list/{page}/{child_id}")
+        if not isinstance(payload, list):
+            raise EdificeError("the schoolbook list route did not return a list")
+
+        me = self._current_user_id()
+        words = [word for raw in payload if (word := self._parse_word(raw, me)) is not None]
+        words.sort(key=self._newest_first, reverse=True)
+        return words
+
+    def get_unread_messages(self) -> int:
+        """Unread messages in the inbox. Only the older ``conversation`` module is supported."""
+        payload = self._get_json("/conversation/count/inbox?unread=true")
+        count = payload.get("count") if isinstance(payload, dict) else None
+        if not _valid_count(count):
+            raise EdificeError("the mailbox count route returned an unexpected payload")
+        return count
+
+    @staticmethod
+    def _newest_first(word: Word) -> tuple[datetime.datetime, int]:
+        # A timestamp with an offset cannot be compared with a naive one.
+        when = word.sent.replace(tzinfo=None) if word.sent else datetime.datetime.min
+        return when, word.word_id
+
+    @staticmethod
+    def _parse_word(raw: Any, me: str) -> Word | None:
+        if not isinstance(raw, dict):
+            return None
+        word_id = raw.get("id")
+        if isinstance(word_id, bool) or not isinstance(word_id, int):
+            return None
+        acknowledgments = raw.get("acknowledgments")
+        acknowledged = isinstance(acknowledgments, list) and any(
+            isinstance(item, dict) and item.get("owner") == me for item in acknowledgments
+        )
+        return Word(
+            word_id=word_id,
+            title=_clean(raw.get("title")),
+            sent=_parse_sent(raw.get("sending_date")),
+            category=_clean(raw.get("category")),
+            sender=_clean(raw.get("owner_name")),
+            acknowledged=acknowledged,
+        )
 
     # -- parsing -------------------------------------------------------------------
 
