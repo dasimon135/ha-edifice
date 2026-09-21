@@ -99,6 +99,18 @@ On the account's device, when the ENT uses the classic `conversation` mailbox: t
 unread messages in the inbox. Only the number is read, never a message. An ENT whose mail
 runs on Carbonio is not supported, and simply gets no such sensor.
 
+### Refresh button
+
+On the account's device, a **Refresh** button reads the ENT right away instead of waiting for
+the next scheduled read. Use it after you mark something as read in the ENT, or when a teacher
+tells you something was just posted.
+
+It stays available while the ENT is unreachable, so pressing it is also how you retry. Home
+Assistant merges presses made in quick succession: the first one reads at once, and however
+many follow within the next few seconds cost one more read when the cooldown ends.
+
+An automation or a dashboard can press it too: `button.press` on that entity.
+
 ### Examples
 
 Remind yourself at 18:00 when there is homework for tomorrow:
@@ -224,10 +236,22 @@ If the ENT stops accepting the saved password, Home Assistant asks you for the n
 and refreshes stop meanwhile: a changed password costs **one** failed login, not one per
 refresh.
 
+### How often it reads the ENT
+
+Every 20 minutes by default. To change it, open **Settings → Devices & services → Edifice ENT →
+Configure** and enter a whole number of minutes, from 5 to 1440 (24 hours). Saving reloads the
+integration.
+
+There is a lower bound because every reading is a handful of requests to a school platform
+that is not yours; the [Refresh button](#refresh-button) covers the times when waiting is the
+problem. A value outside the bounds written into the configuration by hand is ignored, and the
+default is used instead.
+
 ## How it behaves
 
-- It refreshes every **20 minutes**, reusing one session: two requests for the diary, two per
-  child for the cahier de liaison, one for the mailbox. The list of children is asked for
+- It refreshes every **20 minutes** unless you choose otherwise
+  ([how often it reads the ENT](#how-often-it-reads-the-ent)), reusing one session: two
+  requests for the diary, two per child for the cahier de liaison, one for the mailbox. The list of children is asked for
   only every six hours. A module the ENT does not have answers 404 once and is not asked
   for again until the next reload.
 - A module that is missing or answers something unreadable costs only its own entities,

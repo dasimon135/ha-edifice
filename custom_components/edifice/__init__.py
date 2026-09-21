@@ -10,7 +10,7 @@ from homeassistant.core import HomeAssistant
 from .api import EdificeClient
 from .coordinator import EdificeConfigEntry, EdificeCoordinator, seen_store, words_store
 
-PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.EVENT, Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.BUTTON, Platform.CALENDAR, Platform.EVENT, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> bool:

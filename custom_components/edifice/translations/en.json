@@ -39,6 +39,11 @@
     }
   },
   "entity": {
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      }
+    },
     "calendar": {
       "homework": {
         "name": "Homework"
@@ -75,6 +80,20 @@
       },
       "unread_messages": {
         "name": "Unread messages"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "How often to read the ENT",
+        "description": "Home Assistant reads the ENT every {default} minutes by default. Each reading is a handful of requests to your school's platform, so the lowest value allowed is {minimum} minutes. The Refresh button reads it once, right away.",
+        "data": {
+          "scan_interval": "Interval (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "Whole minutes. Saving reloads the integration."
+        }
       }
     }
   }

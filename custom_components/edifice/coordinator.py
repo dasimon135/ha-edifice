@@ -26,7 +26,7 @@ from .api import (
     Homework,
     Word,
 )
-from .const import CHILDREN_REFRESH, DOMAIN, STORAGE_VERSION, UPCOMING_DAYS, UPDATE_INTERVAL
+from .const import CHILDREN_REFRESH, DOMAIN, STORAGE_VERSION, UPCOMING_DAYS, scan_interval
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,7 +87,7 @@ class EdificeCoordinator(DataUpdateCoordinator[EdificeData]):
             _LOGGER,
             name=f"{DOMAIN} {entry.title}",
             config_entry=entry,
-            update_interval=UPDATE_INTERVAL,
+            update_interval=scan_interval(entry.options),
         )
         self.client = client
         self._seen_store = seen_store(hass, entry.entry_id)

@@ -39,6 +39,11 @@
     }
   },
   "entity": {
+    "button": {
+      "refresh": {
+        "name": "Actualiser"
+      }
+    },
     "calendar": {
       "homework": {
         "name": "Devoirs"
@@ -75,6 +80,20 @@
       },
       "unread_messages": {
         "name": "Messages non lus"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Fréquence de lecture de l'ENT",
+        "description": "Home Assistant lit l'ENT toutes les {default} minutes par défaut. Chaque lecture représente quelques requêtes vers la plateforme de l'école : la valeur minimale est donc de {minimum} minutes. Le bouton Actualiser lit l'ENT une fois, tout de suite.",
+        "data": {
+          "scan_interval": "Intervalle (minutes)"
+        },
+        "data_description": {
+          "scan_interval": "En minutes entières. L'enregistrement recharge l'intégration."
+        }
       }
     }
   }

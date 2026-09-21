@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 - unreleased
+
+### Added
+
+- **Refresh button** on the account's device: reads the ENT right away instead of waiting for
+  the next scheduled read. It stays available while the ENT is unreachable, so pressing it is
+  also how you retry. Home Assistant merges presses made in quick succession: one read at once,
+  and at most one more when its cooldown ends.
+- **Polling interval option** (Configure on the integration): a whole number of minutes from 5
+  to 1440, 20 as before by default. Saving reloads the integration. A value outside the bounds
+  written into the configuration by hand is ignored, and the default is used.
+
 ## 0.3.1 - 2026-09-21
 
 ### Fixed

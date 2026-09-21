@@ -8,9 +8,13 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_NAME, CONF_PASSWORD, CONF_URL, CONF_USERNAME
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlowWithReload
+from homeassistant.const import CONF_NAME, CONF_PASSWORD, CONF_SCAN_INTERVAL, CONF_URL, CONF_USERNAME
+from homeassistant.core import callback
 from homeassistant.helpers.selector import (
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -23,7 +27,7 @@ from .api import (
     EdificeError,
     EdificeUnavailable,
 )
-from .const import DOMAIN
+from .const import DEFAULT_SCAN_MINUTES, DOMAIN, MAX_SCAN_MINUTES, MIN_SCAN_MINUTES, scan_interval
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +47,21 @@ STEP_USER_SCHEMA = vol.Schema(
     }
 )
 STEP_REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): _PASSWORD})
+
+# Whole minutes, typed rather than dragged: a slider invites the lowest value.
+STEP_OPTIONS_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_MINUTES): NumberSelector(
+            NumberSelectorConfig(
+                min=MIN_SCAN_MINUTES,
+                max=MAX_SCAN_MINUTES,
+                step=1,
+                mode=NumberSelectorMode.BOX,
+                unit_of_measurement="min",
+            )
+        )
+    }
+)
 
 
 def normalise_url(value: str) -> str:
@@ -77,6 +96,11 @@ class EdificeConfigFlow(ConfigFlow, domain=DOMAIN):
     """Add an ENT account, and re-enter its password when it stops working."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> EdificeOptionsFlow:
+        return EdificeOptionsFlow()
 
     async def _async_validate(self, url: str, username: str, password: str) -> tuple[str | None, str | None]:
         """Try the account. Returns ``(first_diary_title, error_key)``; one is None."""
@@ -152,5 +176,23 @@ class EdificeConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders={
                 "username": entry.data[CONF_USERNAME],
                 "host": urlsplit(entry.data[CONF_URL]).netloc,
+            },
+        )
+
+
+class EdificeOptionsFlow(OptionsFlowWithReload):
+    """How often the ENT is read. The entry reloads by itself when this is saved."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data={CONF_SCAN_INTERVAL: int(user_input[CONF_SCAN_INTERVAL])})
+
+        current = int(scan_interval(self.config_entry.options).total_seconds() // 60)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(STEP_OPTIONS_SCHEMA, {CONF_SCAN_INTERVAL: current}),
+            description_placeholders={
+                "default": str(DEFAULT_SCAN_MINUTES),
+                "minimum": str(MIN_SCAN_MINUTES),
             },
         )
