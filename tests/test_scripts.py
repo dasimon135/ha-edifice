@@ -23,7 +23,7 @@ _spec.loader.exec_module(discover)
 BASE = "https://ent.example.org"
 USER_ID = "USER-ID-SECRET-0123456789012345678"
 CHILD_ID = "CHILD-ID-SECRET-012345678901234567"
-UUID_KEY = "4ba045e5-a016-4179-98b9-6f414e893d84"
+UUID_KEY = "b8ecd46d-17a1-4737-bb92-5686917b0c65"  # random, tied to no real account
 
 # Every one of these must stay out of the output.
 SECRETS = [
