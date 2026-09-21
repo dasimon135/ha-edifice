@@ -13,12 +13,19 @@ source, so its response format has to be established empirically. Printing the
 schema rather than the content keeps a child's school data out of the terminal,
 out of logs, and out of any transcript.
 
-Credentials are read from the environment, or prompted for interactively if the
-environment does not carry them. They are never written to the output.
+Credentials are looked up in this order, and never written to the output:
+
+1. the environment;
+2. the file ``~/.config/ha-edifice/credentials.env`` (or the path in
+   ``EDIFICE_CREDENTIALS_FILE``), one ``KEY=VALUE`` per line;
+3. an interactive prompt, the password without echo.
 
     EDIFICE_URL       base URL of the ENT (default: https://ent.parisclassenumerique.fr)
-    EDIFICE_USERNAME  login (prompted if unset)
-    EDIFICE_PASSWORD  password (prompted without echo if unset -- preferred)
+    EDIFICE_USERNAME  login
+    EDIFICE_PASSWORD  password
+
+The file lives outside every repository so that it cannot be committed by accident.
+Restrict it to your own account (see the README of the scripts, or ``icacls`` on Windows).
 
 Exactly one login attempt is made. There is no retry loop, by design.
 
@@ -41,14 +48,20 @@ import re
 import sys
 import urllib.parse
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import requests
 
-# Any path segment that looks like an opaque identifier, so printed URLs carry none.
-_ID_SEGMENT = re.compile(r"/[A-Za-z0-9_-]{20,}")
+# Any path segment that looks like an opaque identifier, so printed URLs carry none. It has to
+# contain a digit or a hyphen: a long word such as "registeredNotifications" is a route name.
+_ID_SEGMENT = re.compile(r"/(?=[^/?]*[0-9-])[A-Za-z0-9_-]{20,}")
 
 DEFAULT_URL = "https://ent.parisclassenumerique.fr"
+
+# Where the credentials are read from when the environment does not carry them. It lives
+# outside every repository, so it cannot be committed by accident.
+CREDENTIALS_FILE = Path.home() / ".config" / "ha-edifice" / "credentials.env"
 SESSION_COOKIE = "oneSessionId"
 USER_AGENT = "ha-edifice-probe/0.1 (+https://github.com/dasimon135/ha-edifice)"
 TIMEOUT = 20
@@ -72,18 +85,43 @@ class ProbeError(Exception):
         self.code = code
 
 
+def read_credentials_file(path: Path) -> dict[str, str]:
+    """Read ``KEY=VALUE`` lines. A line starting with ``#`` is a comment.
+
+    The value is kept exactly as written, spaces included: only the first ``=`` splits a
+    line, so a password may contain any character. Nothing here is ever printed.
+    """
+    try:
+        text = path.read_text(encoding="utf-8-sig")  # Windows PowerShell 5 writes a BOM
+    except OSError:
+        return {}
+    values: dict[str, str] = {}
+    for line in text.splitlines():
+        if line.lstrip().startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        values[key.strip()] = value
+    return values
+
+
 def read_config() -> Config:
-    base_url = os.environ.get("EDIFICE_URL", DEFAULT_URL).rstrip("/")
+    """Environment first, then the credentials file, then a prompt."""
+    from_file = read_credentials_file(Path(os.environ.get("EDIFICE_CREDENTIALS_FILE") or CREDENTIALS_FILE))
+
+    def setting(name: str) -> str | None:
+        return os.environ.get(name) or from_file.get(name) or None
+
+    base_url = (setting("EDIFICE_URL") or DEFAULT_URL).rstrip("/")
     if not base_url.startswith("https://"):
         raise ProbeError(f"EDIFICE_URL must be an https URL, got {base_url!r}", 2)
 
     try:
-        username = os.environ.get("EDIFICE_USERNAME") or input("ENT login: ").strip()
-        password = os.environ.get("EDIFICE_PASSWORD") or getpass.getpass("ENT password: ")
+        username = setting("EDIFICE_USERNAME") or input("ENT login: ").strip()
+        password = setting("EDIFICE_PASSWORD") or getpass.getpass("ENT password: ")
     except (EOFError, KeyboardInterrupt):
         raise ProbeError(
-            "no credentials on stdin. Set EDIFICE_USERNAME and EDIFICE_PASSWORD, "
-            "or run this from an interactive terminal.",
+            "no credentials on stdin. Set EDIFICE_USERNAME and EDIFICE_PASSWORD, put them in "
+            f"{CREDENTIALS_FILE}, or run this from an interactive terminal.",
             2,
         ) from None
 
@@ -95,6 +133,17 @@ def read_config() -> Config:
     return Config(base_url=base_url, username=username, password=password)
 
 
+# A dict key that is itself an identifier (uuid, Mongo id, long number) must not be printed.
+_ID_KEY = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|[0-9a-fA-F]{24}|\d{5,}"
+)
+
+
+def _safe_key(key: Any) -> str:
+    text = str(key)
+    return "<id>" if _ID_KEY.fullmatch(text) else text
+
+
 def describe(value: Any, depth: int = 0, max_keys: int = 25) -> Any:
     """Return the structure of a JSON value, with every scalar replaced by its type.
 
@@ -104,7 +153,7 @@ def describe(value: Any, depth: int = 0, max_keys: int = 25) -> Any:
         return "..."
     if isinstance(value, dict):
         keys = list(value)[:max_keys]
-        shape = {k: describe(value[k], depth + 1) for k in keys}
+        shape = {_safe_key(k): describe(value[k], depth + 1) for k in keys}
         if len(value) > max_keys:
             shape["..."] = f"+{len(value) - max_keys} more keys"
         return shape
