@@ -39,6 +39,8 @@ pytestmark = pytest.mark.usefixtures("enable_custom_integrations", "pin_clock")
 ENTITY_ID = "sensor.school_emma_homework"
 CALENDAR_ID = "calendar.school_emma_homework"
 EVENT_ID = "event.school_emma_new_homework"
+
+
 # -- the sensor ----------------------------------------------------------------------
 
 
@@ -466,6 +468,6 @@ async def test_the_session_is_closed_when_the_first_refresh_fails(hass, entry, c
     """Nothing will unload an entry that never set up, so setup must close its own session."""
     client_cls.return_value.get_diaries.side_effect = error
 
-    assert not await _setup(hass, entry)
+    assert not await setup_entry(hass, entry)
 
     client_cls.return_value.close.assert_called_once()
