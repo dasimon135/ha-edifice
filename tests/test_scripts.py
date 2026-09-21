@@ -207,3 +207,121 @@ def test_shapes_never_print_a_key_that_is_an_identifier(key):
 def test_ordinary_keys_survive_including_the_long_ones_the_server_uses():
     long_key = "fr-wseduc-homeworks-controllers-HomeworksController|getHomework"
     assert long_key in discover.et.describe({long_key: True})
+
+
+# -- credentials ---------------------------------------------------------------------
+
+TRICKY_PASSWORD = "P@ss\"w$rd#1'x =y "  # quotes, $, #, = and a trailing space
+
+
+def _read_config(monkeypatch, tmp_path, content: str | None, **env: str):
+    """Run read_config() against a fresh credentials file and a controlled environment."""
+    for name in ("EDIFICE_URL", "EDIFICE_USERNAME", "EDIFICE_PASSWORD"):
+        monkeypatch.delenv(name, raising=False)
+    path = tmp_path / "credentials.env"
+    if content is not None:
+        path.write_bytes(content.encode("utf-8"))
+    monkeypatch.setenv("EDIFICE_CREDENTIALS_FILE", str(path))
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    return discover.et.read_config()
+
+
+def test_credentials_come_from_the_file(monkeypatch, tmp_path):
+    config = _read_config(
+        monkeypatch,
+        tmp_path,
+        "EDIFICE_URL=https://ent.example.org/\nEDIFICE_USERNAME=parent\nEDIFICE_PASSWORD=secret\n",
+    )
+
+    assert (config.base_url, config.username, config.password) == ("https://ent.example.org", "parent", "secret")
+
+
+def test_the_password_is_read_back_exactly(monkeypatch, tmp_path):
+    content = f"EDIFICE_USERNAME=parent\nEDIFICE_PASSWORD={TRICKY_PASSWORD}\n"
+
+    config = _read_config(monkeypatch, tmp_path, content)
+
+    assert config.password == TRICKY_PASSWORD
+
+
+def test_a_byte_order_mark_and_windows_line_endings_are_tolerated(monkeypatch, tmp_path):
+    """Windows PowerShell 5 writes a BOM; Notepad and friends write CRLF."""
+    content = "﻿EDIFICE_USERNAME=parent\r\nEDIFICE_PASSWORD=secret\r\n"
+
+    config = _read_config(monkeypatch, tmp_path, content)
+
+    assert (config.username, config.password) == ("parent", "secret")
+
+
+def test_comments_and_blank_lines_are_ignored(tmp_path):
+    path = tmp_path / "credentials.env"
+    path.write_text(
+        "# my account\n\nEDIFICE_USERNAME=parent\n  # EDIFICE_USERNAME=someone-else\nEDIFICE_PASSWORD=secret\n",
+        encoding="utf-8",
+    )
+
+    # Compared as a whole: a commented-out line must not leave a stray key behind either.
+    assert discover.et.read_credentials_file(path) == {
+        "EDIFICE_USERNAME": "parent",
+        "EDIFICE_PASSWORD": "secret",
+    }
+
+
+def test_a_missing_url_falls_back_to_the_default(monkeypatch, tmp_path):
+    config = _read_config(monkeypatch, tmp_path, "EDIFICE_USERNAME=parent\nEDIFICE_PASSWORD=secret\n")
+
+    assert config.base_url == discover.et.DEFAULT_URL
+
+
+def test_the_environment_beats_the_file(monkeypatch, tmp_path):
+    content = "EDIFICE_USERNAME=from-file\nEDIFICE_PASSWORD=from-file\n"
+
+    config = _read_config(monkeypatch, tmp_path, content, EDIFICE_USERNAME="from-env")
+
+    assert (config.username, config.password) == ("from-env", "from-file")
+
+
+def test_without_a_file_it_asks_and_fails_cleanly_when_nobody_can_answer(monkeypatch, tmp_path):
+    def nobody(*_args, **_kwargs):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", nobody)
+    monkeypatch.setattr(discover.et.getpass, "getpass", nobody)
+
+    with pytest.raises(discover.et.ProbeError) as error:
+        _read_config(monkeypatch, tmp_path, None)
+
+    assert error.value.code == 2
+    assert "credentials.env" in str(error.value)
+
+
+def test_reading_the_credentials_prints_nothing(monkeypatch, tmp_path, capsys):
+    _read_config(monkeypatch, tmp_path, f"EDIFICE_USERNAME=parent\nEDIFICE_PASSWORD={TRICKY_PASSWORD}\n")
+
+    captured = capsys.readouterr()
+
+    assert captured.out == "" and captured.err == ""
+
+
+def test_the_default_location_is_in_the_users_config_folder_not_in_a_project():
+    """The README tells people to create the file there, so it must not drift."""
+    assert discover.et.CREDENTIALS_FILE == Path.home() / ".config" / "ha-edifice" / "credentials.env"
+
+
+# -- printed routes ------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("route", "printed"),
+    [
+        (f"/schoolbook/count/{CHILD_ID}", "/schoolbook/count/{id}"),
+        (f"/directory/user/{UUID_KEY}/children", "/directory/user/{id}/children"),
+        # A long route name is not an identifier: it has neither a digit nor a hyphen.
+        ("/timeline/registeredNotifications", "/timeline/registeredNotifications"),
+        ("/timeline/lastNotifications?page=0", "/timeline/lastNotifications?page=0"),
+        ("/conversation/count/inbox?unread=true", "/conversation/count/inbox?unread=true"),
+    ],
+)
+def test_redact_hides_identifiers_and_keeps_route_names(route, printed):
+    assert discover.et.redact(route) == printed

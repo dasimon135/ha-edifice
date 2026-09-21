@@ -16,9 +16,9 @@ What it looks at, and why:
 * the notification feed (``timeline``), and the list of modules the platform has
   registered, which is platform configuration rather than personal data.
 
-    EDIFICE_URL       base URL of the ENT (default: https://ent.parisclassenumerique.fr)
-    EDIFICE_USERNAME  login (prompted if unset)
-    EDIFICE_PASSWORD  password (prompted without echo if unset)
+Credentials come from the environment, then from ``~/.config/ha-edifice/credentials.env``,
+then from a prompt; see scripts/edifice_login.py. The default URL is only this family of
+scripts' convenience: the integration itself has none.
 
 Read the status codes like this: ``200`` the route exists and answered, ``404`` the module
 is not deployed on this platform, ``302`` the session was refused. Two or three requests
