@@ -1,67 +1,53 @@
 # Changelog
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-09-21
+
+First public release. Tested on Paris Classe Numérique with a parent account, on Home
+Assistant 2026.7.2 and 2026.9.3.
 
 ### Added
 
-- **Cahier de liaison, per child.** Each child gets a device named after their first name,
-  with a sensor counting the words the account has not acknowledged, listing the latest ten
-  (title, date, sender, category, acknowledged), and a `word_added` event. The text of a
-  word is never kept. Announcements are remembered per child across restarts, and a child met
-  for the first time is a baseline, not news.
-- **Unread messages** sensor for ENTs that use the classic `conversation` mailbox. Only the
+- **Homework sensor**: how many homework items are due from today, looking 14 days ahead. The
+  list is in the `homework` attribute, kept out of the recorder, and `next_due` is the date of
+  the next one.
+- **Calendar**: the whole diary as all-day events on the day each item is due, past weeks
+  included. It is on while something is due today.
+- **New homework event** (`homework_added`), fired once for each entry that appears in the
+  diary and is due today or later. What was already announced is kept on disk, so a restart
+  neither repeats the diary nor loses what was added while Home Assistant was down. The first
+  run only records what exists.
+- **Cahier de liaison, per child.** Each child gets a device named after their first name, with
+  a sensor counting the words this account has not acknowledged, the latest ten as an attribute
+  (title, date, sender, category, acknowledged), and a `word_added` event. The text of a word is
+  never kept. Announcements are remembered per child, and a child met for the first time is a
+  baseline, not news.
+- **Unread messages** sensor, for ENTs that use the classic `conversation` mailbox. Only the
   count is read.
+- **Configuration**: ENT address, username, password and an optional name. It checks that the
+  address is an Edifice platform, signs in, and confirms a homework diary is readable before
+  saving anything. Reauthentication when the ENT rejects the saved password; polling stops
+  until then.
+- English and French translations, and the brand icons HACS requires. The icons were drawn
+  for this project and reuse no logo from Edifice or from any ENT.
+- Command-line scripts in `scripts/` that print shapes and counts rather than school data, to
+  observe an ENT and to audit what the parser kept against what the server sent.
 
-### Changed
+### How it behaves
 
+- It refreshes every 20 minutes and reuses one session. When the session has expired it signs
+  in again once and retries once, and never loops.
 - A module the ENT does not have costs only its own entities, never the homework, and is not
   asked for again after its first 404. A network failure still fails the whole refresh.
-- The list of children is asked for every six hours instead of at every refresh.
-- The device descriptions moved to `entity.py`. The children's devices are not linked to the
-  account's with `via_device`: Home Assistant replaced it by `via_device_id` between 2026.7 and
-  2026.9, and the link would only be cosmetic.
-
-## 0.2.0 - unreleased
-
-### Added
-
-- **Calendar** entity: the whole diary as all-day events on the day each item is due, past
-  weeks included. On while something is due today.
-- **Event** entity: `homework_added`, fired once for each entry that appears in the diary
-  and is due today or later. The list of entries already announced is kept on disk, so a
-  restart neither repeats the diary nor loses what was added while Home Assistant was down.
-  The first run only records what exists.
-
-### Changed
-
-- The coordinator now keeps the whole diary and derives the sensor's "next 14 days" from it.
-  The sensor itself is unchanged.
-- `scripts/edifice_homework.py` loads `api.py` by path: the integration now contains a
-  `calendar.py`, which would otherwise shadow the standard library's module.
-
-## 0.1.0 - internal
-
-First version, never published. Tested on Paris Classe Numérique with a parent account, on
-Home Assistant 2026.7.2 and 2026.9.3.
-
-### Added
-
-- `sensor` with the number of homework items due from today (14 days ahead), and the list
-  in the `homework` attribute, excluded from the recorder.
-- Config flow: ENT address, username, password and an optional name. Checks that the
-  address is an Edifice platform, signs in, and confirms a homework diary is readable
-  before saving.
-- Reauthentication when the ENT rejects the saved password; polling stops until then.
-- One re-login and one retry when a session expires, never a loop.
-- English and French translations.
-- Brand icons (`brand/icon.png`, `brand/icon@2x.png`), which HACS requires. Drawn for this
-  project; they reuse no logo from Edifice or from any ENT.
-- `scripts/edifice_login.py` and `scripts/edifice_homework.py`, which print shapes and
-  counts rather than school data, and audit what the parser kept against what the server
-  sent.
+- The list of children is asked for every six hours, not at every refresh.
 
 ### Known limits
 
-- Homework diary of the primary-school module only.
-- monLycée.net is not supported (Keycloak / OpenID Connect sign-in).
-- Server-side session lifetime is not yet measured.
+- The homework diary of the primary-school module only. The secondary-school `diary` module is
+  not supported.
+- monLycée.net is not supported: it signs in through Keycloak / OpenID Connect.
+- A mailbox on Carbonio is not supported; the unread-messages sensor is simply absent.
+- The integration only reads. It never acknowledges a word of the cahier de liaison.
+- A child enrolled after the integration was set up gets their entities after a reload.
+- Only the first ten words of each child's cahier de liaison are read.
+- The server-side lifetime of a session is not measured. No re-authentication was seen over the
+  hours Home Assistant's own log could show.
