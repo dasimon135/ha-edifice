@@ -28,7 +28,7 @@ It works if all of these are true:
 - you run Home Assistant 2026.7 or newer.
 
 It will **not** work if you sign in "with EduConnect", through a CAS or OpenID Connect
-service, or if your ENT is not Edifice. See [Compatibility](#compatibility) — in
+service, or if your ENT is not Edifice. See [Compatibility](#compatibility): in
 particular, **monLycée.net is not supported**.
 
 It only reads. The single request it sends that is not a plain read is the login.
@@ -416,10 +416,10 @@ The ENT signs users in with a plain form (`POST /auth/login`) and answers with a
 cookie; the integration then reads `/homeworks/list` and `/homeworks/get/{id}`. Two
 details cost the author time and are written down in [docs/](docs/):
 
-- [docs/session.md](docs/session.md) — a **failed login answers HTTP 200** and an
+- [docs/session.md](docs/session.md): a **failed login answers HTTP 200** and an
   **expired session answers a redirect**, never 401. A client that follows redirects
   reads a login page as if it were data.
-- [docs/homework-api.md](docs/homework-api.md) — the routes and the payload, observed
+- [docs/homework-api.md](docs/homework-api.md): the routes and the payload, observed
   because the server side of this module is not open source.
 
 The routes were learned by reading the public source of the official mobile app and by
