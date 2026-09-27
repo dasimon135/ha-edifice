@@ -1,5 +1,7 @@
 # Edifice ENT for Home Assistant
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
+
 School homework, notes from the teachers and unread mail from your child's ENT, in Home
 Assistant.
 
@@ -194,6 +196,14 @@ content: >
 ## Installation
 
 ### With HACS
+
+**From HACS (recommended).** This button opens the repository in your own Home
+Assistant. HACS asks whether to add it as a custom repository: accept, then
+download **Edifice ENT** and restart Home Assistant.
+
+[![Open the Edifice ENT repository inside your Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=dasimon135&repository=ha-edifice&category=integration)
+
+If the button does not reach your instance, add the repository by hand:
 
 1. In HACS, open the menu (⋮) → **Custom repositories**.
 2. Add `https://github.com/dasimon135/ha-edifice` with the category **Integration**.
