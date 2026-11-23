@@ -4,3 +4,7 @@ pytest>=8
 # that no user has, and some releases pin a beta: check the pin on every bump with
 #   pip install --dry-run --no-deps --report - pytest-homeassistant-custom-component==X
 pytest-homeassistant-custom-component==0.13.366
+# The manifest depends on frontend (it serves the dashboard card), and the harness does not
+# install a component's own requirements. This is the version homeassistant==2026.9.3 pins in
+# homeassistant/components/frontend/manifest.json: move it with the line above.
+home-assistant-frontend==20260826.7

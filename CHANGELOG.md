@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- **A dashboard card**, `custom:edifice-card`, shipped with the integration and registered as
+  a dashboard resource on its own: homework grouped by due day, the cahier de liaison per
+  child with what is still to acknowledge, and the unread mail count. It only reads what the
+  entities already hold, follows the theme, and speaks English and French.
+- The account's device now links to the ENT (its configuration URL), which is also where the
+  card's "Open the ENT" link goes.
+
 ## 0.3.1 - 2026-09-21
 
 ### Fixed

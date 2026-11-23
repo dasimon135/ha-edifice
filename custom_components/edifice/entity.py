@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_URL
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 
 from .api import Child
@@ -10,12 +11,17 @@ from .const import DOMAIN
 
 
 def account_device_info(entry: ConfigEntry) -> DeviceInfo:
-    """One device per ENT account: the class diary and the mailbox belong to it."""
+    """One device per ENT account: the class diary and the mailbox belong to it.
+
+    ``configuration_url`` is the ENT's own address: the device page gets a link to it, and
+    the dashboard card reads it from the device registry for its "Open the ENT" link.
+    """
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name=entry.title,
         manufacturer="Edifice",
         entry_type=DeviceEntryType.SERVICE,
+        configuration_url=entry.data[CONF_URL],
     )
 
 

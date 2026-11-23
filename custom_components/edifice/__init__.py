@@ -6,11 +6,29 @@ from functools import partial
 
 from homeassistant.const import CONF_PASSWORD, CONF_URL, CONF_USERNAME, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.typing import ConfigType
 
 from .api import EdificeClient
+from .const import DOMAIN
 from .coordinator import EdificeConfigEntry, EdificeCoordinator, seen_store, words_store
+from .frontend import async_register_card
 
 PLATFORMS: list[Platform] = [Platform.CALENDAR, Platform.EVENT, Platform.SENSOR]
+
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Serve the bundled dashboard card as soon as the component loads.
+
+    Here and not in ``async_setup_entry``: the dashboard asks for the card's URL on every
+    page load, and an entry only finishes setting up after its first read of the ENT,
+    seconds later, or never when the ENT is down. In that window the URL would answer 404
+    and the card would show as a configuration error until the page was reloaded.
+    """
+    await async_register_card(hass)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: EdificeConfigEntry) -> bool:

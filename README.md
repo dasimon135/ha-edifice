@@ -179,7 +179,35 @@ automation:
             ({{ trigger.to_state.attributes.sender }})
 ```
 
-A dashboard card:
+### Dashboard card
+
+The integration ships its own card and registers it with your dashboards, so there is
+nothing else to install. Add a card, search for **Edifice ENT**, and pick the account's
+homework sensor (the first one found is used when you leave it empty):
+
+```yaml
+type: custom:edifice-card
+entity: sensor.school_emma_devoirs
+```
+
+It shows how many homework items are due, the next due day and how many notes still wait
+to be acknowledged; then the homework grouped by due day (tap one to read all of it), and
+a second tab with the cahier de liaison, one child at a time. The unread mail count sits in
+the header, with a refresh button when the integration has one, and the footer links to
+the ENT, which is where a note is read and acknowledged: the card never does either.
+
+All options are in the card editor:
+
+| Option | Default | |
+|---|---|---|
+| `entity` | the first homework sensor | the account's homework sensor |
+| `title` | the account name | the header title |
+| `days` | `3` | due days listed before a "show more" button; `0` lists them all |
+| `tab` | `homework` | the tab shown first: `homework` or `notes` |
+
+The card follows your theme, in English or French.
+
+If you would rather build your own, a markdown card does it:
 
 ```yaml
 type: markdown

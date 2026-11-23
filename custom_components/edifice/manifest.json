@@ -1,10 +1,17 @@
 {
   "domain": "edifice",
   "name": "Edifice ENT",
+  "after_dependencies": [
+    "lovelace"
+  ],
   "codeowners": [
     "@dasimon135"
   ],
   "config_flow": true,
+  "dependencies": [
+    "frontend",
+    "http"
+  ],
   "documentation": "https://github.com/dasimon135/ha-edifice",
   "integration_type": "service",
   "iot_class": "cloud_polling",
