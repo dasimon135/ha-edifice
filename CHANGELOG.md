@@ -1,15 +1,22 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-11-23
 
 ### Added
 
-- **A dashboard card**, `custom:edifice-card`, shipped with the integration and registered as
-  a dashboard resource on its own: homework grouped by due day, the cahier de liaison per
-  child with what is still to acknowledge, and the unread mail count. It only reads what the
-  entities already hold, follows the theme, and speaks English and French.
+- **A dashboard card**, `custom:edifice-card`, shipped with the integration: nothing else to
+  install, it is registered as a dashboard resource on its own. Add a card and search for
+  **Edifice ENT**. It shows homework grouped by due day (the first three days, then a "show
+  more" button), the cahier de liaison one child at a time with what is still to
+  acknowledge, and the unread mail count, with a link to the ENT to read and acknowledge a
+  note: the card never does either. Options, all in the card editor: `entity`, `title`,
+  `days`, `tab`. It follows your theme and speaks English and French.
 - The account's device now links to the ENT (its configuration URL), which is also where the
   card's "Open the ENT" link goes.
+
+Nothing changes for existing entities, automations or dashboards: the card only reads what
+the entities already hold. Tested on Paris Classe Numérique with a parent account of two
+children, on Home Assistant 2026.11.2, on a phone and on a desktop.
 
 ## 0.3.1 - 2026-09-21
 
